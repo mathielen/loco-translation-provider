@@ -35,19 +35,31 @@ final class LocoProvider implements ProviderInterface
     private $logger;
     private $defaultLocale;
     private $endpoint;
+	private $restrictToStatus;
 
-    public function __construct(HttpClientInterface $client, LoaderInterface $loader, LoggerInterface $logger, string $defaultLocale, string $endpoint)
+	public function __construct(
+		HttpClientInterface $client,
+		LoaderInterface $loader,
+		LoggerInterface $logger,
+		string $defaultLocale,
+		string $endpoint,
+		?string $restrictToStatus = null)
     {
         $this->client = $client;
         $this->loader = $loader;
         $this->logger = $logger;
         $this->defaultLocale = $defaultLocale;
         $this->endpoint = $endpoint;
-    }
+		$this->restrictToStatus = $restrictToStatus;
+	}
 
     public function __toString(): string
     {
-        return sprintf('loco://%s', $this->endpoint);
+		if ($this->restrictToStatus) {
+			return \sprintf('loco://%s?status=%s', $this->endpoint, $this->restrictToStatus);
+		}
+
+		return \sprintf('loco://%s', $this->endpoint);
     }
 
     public function write(TranslatorBagInterface $translatorBag): void
@@ -102,7 +114,7 @@ final class LocoProvider implements ProviderInterface
                 $response = $this->client->request('GET', sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
                     'query' => [
                         'filter' => $domain,
-                        'status' => 'translated,blank-translation',
+                        'status' => $this->restrictToStatus ?? 'translated,blank-translation',
                     ],
                 ]);
 
