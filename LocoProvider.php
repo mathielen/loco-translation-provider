@@ -37,8 +37,16 @@ final class LocoProvider implements ProviderInterface
     private string $defaultLocale;
     private string $endpoint;
     private ?TranslatorBagInterface $translatorBag = null;
+	private $restrictToStatus;
 
-    public function __construct(HttpClientInterface $client, LoaderInterface $loader, LoggerInterface $logger, string $defaultLocale, string $endpoint, ?TranslatorBagInterface $translatorBag = null)
+    public function __construct(
+		HttpClientInterface $client,
+		LoaderInterface $loader,
+		LoggerInterface $logger,
+		string $defaultLocale,
+		string $endpoint,
+		?TranslatorBagInterface $translatorBag = null,
+		?string $restrictToStatus = null)
     {
         $this->client = $client;
         $this->loader = $loader;
@@ -46,11 +54,16 @@ final class LocoProvider implements ProviderInterface
         $this->defaultLocale = $defaultLocale;
         $this->endpoint = $endpoint;
         $this->translatorBag = $translatorBag;
+		$this->restrictToStatus = $restrictToStatus;
     }
 
     public function __toString(): string
     {
-        return sprintf('loco://%s', $this->endpoint);
+		if ($this->restrictToStatus) {
+			return \sprintf('loco://%s?status=%s', $this->endpoint, $this->restrictToStatus);
+		}
+
+		return \sprintf('loco://%s', $this->endpoint);
     }
 
     public function write(TranslatorBagInterface $translatorBag): void
@@ -107,7 +120,7 @@ final class LocoProvider implements ProviderInterface
                 $response = $this->client->request('GET', sprintf('export/locale/%s.xlf', rawurlencode($locale)), [
                     'query' => [
                         'filter' => $domain,
-                        'status' => 'translated,blank-translation',
+                        'status' => $this->restrictToStatus ?? 'translated,blank-translation',
                     ],
                     'headers' => [
                         'If-Modified-Since' => $previousCatalogue instanceof CatalogueMetadataAwareInterface ? $previousCatalogue->getCatalogueMetadata('last-modified', $domain) : null,
